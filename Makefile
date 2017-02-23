@@ -1,18 +1,24 @@
-PROG=	eegreader
+CC	=	g++
 
-SRCS=	eegreader.c
-NOMAN=
-BINDIR=		/usr/local/bin
+RM	=	rm -f
 
-LDADD+=
-DPADD+=
+NAME	=	eegreader
 
-CFLAGS+=	-fstack-protector-all
-CFLAGS+=	-Wall -Wstrict-prototypes -Wmissing-prototypes
-CFLAGS+=	-Wmissing-declarations
-CFLAGS+=	-Wshadow -Wpointer-arith -Wcast-qual
-CFLAGS+=	-Wsign-compare
-CFLAGS+=	-Werror-implicit-function-declaration
-CFLAGS+=	-Werror # during development phase (breaks some archs)
+SRC	=	src/eegreader.c
 
-.include <bsd.prog.mk>
+OBJ	=	$(SRC:.c=.o)
+
+CFLAGS 	+=	-W -Wall -Wextra -lpython2.7 -lpthread -I include -std=c++11
+
+all:	$(NAME)
+
+$(NAME):	$(OBJ)
+		$(CC) -o $(NAME) $(OBJ) $(CFLAGS)
+
+clean:
+		$(RM) $(OBJ)
+
+fclean:		clean
+		$(RM) $(NAME)
+
+re:		fclean all
