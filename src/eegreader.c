@@ -27,6 +27,8 @@
 #include <termios.h>
 #include <unistd.h>
 #include <vector>
+#include <thread>
+#include <mutex>
 
 #include "eegreader.h"
 #include "matplotlibcpp.h"
@@ -38,25 +40,48 @@ static int	parser_process_byte(struct parser *, uint8_t);
 static void	packet_display(struct parser::packet *);
 std::vector<double>		*moveLeft(std::vector<double> *v, struct parser);
 	
-extern char *__progname;
-static volatile bool keepRunning = true;
+extern char		*__progname;
+static volatile bool	keepRunning = true;
+std::mutex		mtx;
 
 void sigintHandler(int i) {
   (void)i;
   keepRunning = false;
 }
 
+void
+collector(struct parser *ctx, int fd)
+{
+  int nbytes;
+  int i;
+  unsigned char buf[64];
+  mtx.lock();
+  parser_init(ctx);
+  while (1) {
+    nbytes = read(fd, buf, sizeof buf);
+    if (nbytes < 0) {
+      if (errno != EINTR || errno != EAGAIN)
+	continue;
+      err(1, NULL);
+    }
+    for (i = 0; i < nbytes; ++i)
+      if (parser_process_byte(ctx, buf[i])) {
+	mtx.unlock();
+	packet_display(&(ctx->packet));
+	mtx.lock();
+      }
+  }
+}
+
 int
 main(int argc, char *argv[])
 {
-  int i;
   int ch;
   int fd;
-  int nbytes;
-  unsigned char buf[64];
   const char *line = "/dev/cuaU0";
   struct parser ctx;
   std::vector<double> *chanVectorCollector = new std::vector<double>[5];
+  std::thread	t1;
 
   signal(SIGINT, sigintHandler);
   chanVectorCollector[0].push_back(0.0);
@@ -76,45 +101,34 @@ main(int argc, char *argv[])
       usage();
     }
   }
-	    
   fd = open(line, O_RDONLY | O_NONBLOCK);
   if (fd < 0)
     err(1, NULL);
-	    
   line_set(fd);
-	    
-  parser_init(&ctx);
+  t1 = std::thread(collector, &ctx, fd);
   while (keepRunning) {
-    nbytes = read(fd, buf, sizeof buf);
-    if (nbytes < 0) {
-      if (errno != EINTR || errno != EAGAIN)
-	continue;
-      err(1, NULL);
+    mtx.lock();
+    std::cout << "normal thread" << std::endl;
+    packet_display(&(ctx.packet));
+    if (chanVectorCollector[4].size() == 30){
+      matplotlibcpp::clf();
+      chanVectorCollector = moveLeft(chanVectorCollector, ctx);
     }
-	      
-    for (i = 0; i < nbytes; ++i)
-      if (parser_process_byte(&ctx, buf[i]))
-	{
-	  if (chanVectorCollector[4].size() == 30){
-        //matplotlibcpp::clf();
-        chanVectorCollector = moveLeft(chanVectorCollector, ctx);
-	  }
-	  else
-	    {
-	      chanVectorCollector[4].push_back(chanVectorCollector[4].back() + 0.01);
-	      chanVectorCollector[0].push_back((double)ctx.packet.bytemap[STATE_CHAN1_LO]);
-	      chanVectorCollector[1].push_back((double)ctx.packet.bytemap[STATE_CHAN1_HI]);
-	      chanVectorCollector[2].push_back((double)ctx.packet.bytemap[STATE_CHAN2_LO]);
-	      chanVectorCollector[3].push_back((double)ctx.packet.bytemap[STATE_CHAN2_HI]);
-	    }
-	  matplotlibcpp::plot(chanVectorCollector[4], chanVectorCollector[0], "r");
-	  matplotlibcpp::plot(chanVectorCollector[4], chanVectorCollector[1], "g");
-	  matplotlibcpp::plot(chanVectorCollector[4], chanVectorCollector[2], "b");
-	  matplotlibcpp::plot(chanVectorCollector[4], chanVectorCollector[3], "y");
-	  matplotlibcpp::draw();
-	  matplotlibcpp::pause(0.001);
-	  packet_display(&(ctx.packet));
-	}
+    else
+      {
+	chanVectorCollector[4].push_back(chanVectorCollector[4].back() + 0.01);
+	chanVectorCollector[0].push_back((double)ctx.packet.bytemap[STATE_CHAN1_LO]);
+	chanVectorCollector[1].push_back((double)ctx.packet.bytemap[STATE_CHAN1_HI]);
+	chanVectorCollector[2].push_back((double)ctx.packet.bytemap[STATE_CHAN2_LO]);
+	chanVectorCollector[3].push_back((double)ctx.packet.bytemap[STATE_CHAN2_HI]);
+      }
+    mtx.unlock();
+    matplotlibcpp::plot(chanVectorCollector[4], chanVectorCollector[0], "r");
+    matplotlibcpp::plot(chanVectorCollector[4], chanVectorCollector[1], "g");
+    matplotlibcpp::plot(chanVectorCollector[4], chanVectorCollector[2], "b");
+    matplotlibcpp::plot(chanVectorCollector[4], chanVectorCollector[3], "y");
+    matplotlibcpp::draw();
+    matplotlibcpp::pause(0.001);
   }
   close(fd);
   return (0);

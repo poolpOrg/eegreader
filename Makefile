@@ -8,7 +8,7 @@ SRC	=	src/eegreader.c
 
 OBJ	=	$(SRC:.c=.o)
 
-CFLAGS 	+=	-W -Wall -Wextra -lpython2.7 -I include
+CFLAGS 	+=	-W -Wall -Wextra -lpython2.7 -lpthread -I include -std=c++11
 
 all:	$(NAME)
 
