@@ -48,11 +48,10 @@ enum {
 };
 
 struct parser {
-	uint8_t		state;
-
-	struct packet {
-		uint8_t		bytemap[STATE_MAX];
-	} __attribute__((packed)) packet;
+  uint8_t		state;
+  struct packet {
+    uint8_t		bytemap[STATE_MAX];
+  } __attribute__((packed)) packet;
 };
 
 #endif
