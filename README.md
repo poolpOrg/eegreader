@@ -5,26 +5,29 @@ this is a work in progress utility to extract raw data from
 olimex eeg-smt device but can be adapted to work with other
 OpenEEG firmware v2 compliant devices.
 
-this is written for the OpenBSD operating system.
+this is written for the OpenBSD operating system but it has
+been tested on Linux and OSX succesfully.
 
 1- make && make install
 2- doas eegreader -l /dev/cuaUO
 
 the output will consists of | separated fields like:
 
-    e0|2|2,5|1,255|1,255|1,249|1,244|1,237|1,230|7
-    e1|2|0,232|1,255|1,255|1,249|1,243|1,237|1,230|7
-    e2|2|1,80|1,255|1,255|1,248|1,242|1,235|1,228|7
-    e3|2|2,181|1,255|1,255|1,250|1,245|1,240|1,234|7
+    ea|2|519|510|505|500|493|487|7
+    eb|2|519|510|506|501|495|489|7
+    ec|2|519|511|506|501|495|489|7
+    ed|2|519|511|505|499|493|487|7
 
 where the fields are as follow:
 
     frame
     version
-    channel 1 low, channel 1 high
-    channel 2 low, channel 2 high
-    channel 3 low, channel 3 high
-    channel 4 low, channel 4 high
-    channel 5 low, channel 5 high
-    channel 6 low, channel 6 high
+    channel 1
+    channel 2
+    channel 3
+    channel 4
+    channel 5
+    channel 6
     button states
+
+Each channel value is a 10-bit integer.
