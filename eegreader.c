@@ -43,7 +43,7 @@ main(int argc, char *argv[])
 	int ch;
 	int fd;
 	int nbytes;
-	unsigned char buf[64];
+	unsigned char buf[sizeof (struct packet)];
 	const char *line = "/dev/cuaU0";
 	struct parser ctx;
 	
@@ -143,7 +143,7 @@ parser_process_byte(struct parser *ctx, uint8_t byte)
 complete:
 	ctx->state = STATE_SYNC_1;
 	return 1;
-	
+
 resync:
 	ctx->state = STATE_SYNC_1;
 	return 0;
@@ -152,32 +152,16 @@ resync:
 static void
 packet_display(struct packet *packet)
 {
-	printf("%02x|%d|%d,%d|%d,%d|%d,%d|%d,%d|%d,%d|%d,%d|%d,%d|%d\n",
+	printf("%02x|%d|%d|%d|%d|%d|%d|%d|%d\n",
 	    packet->bytemap[STATE_FRAME],
 	    packet->bytemap[STATE_VERSION],
 
-	    packet->bytemap[STATE_CHAN1_LO],
-	    packet->bytemap[STATE_CHAN1_HI],
+		packet->bytemap[STATE_CHAN1_LO] << 8 | packet->bytemap[STATE_CHAN1_HI],
+		packet->bytemap[STATE_CHAN2_LO] << 8 | packet->bytemap[STATE_CHAN2_HI],
+		packet->bytemap[STATE_CHAN3_LO] << 8 | packet->bytemap[STATE_CHAN3_HI],
+		packet->bytemap[STATE_CHAN4_LO] << 8 | packet->bytemap[STATE_CHAN4_HI],
+		packet->bytemap[STATE_CHAN5_LO] << 8 | packet->bytemap[STATE_CHAN5_HI],
+		packet->bytemap[STATE_CHAN6_LO] << 8 | packet->bytemap[STATE_CHAN6_HI],
 
-	    packet->bytemap[STATE_CHAN2_LO],
-	    packet->bytemap[STATE_CHAN2_HI],
-
-	    packet->bytemap[STATE_CHAN2_LO],
-	    packet->bytemap[STATE_CHAN2_HI],
-
-	    packet->bytemap[STATE_CHAN3_LO],
-	    packet->bytemap[STATE_CHAN3_HI],
-
-	    packet->bytemap[STATE_CHAN4_LO],
-	    packet->bytemap[STATE_CHAN4_HI],
-
-	    packet->bytemap[STATE_CHAN5_LO],
-	    packet->bytemap[STATE_CHAN5_HI],
-
-	    packet->bytemap[STATE_CHAN6_LO],
-	    packet->bytemap[STATE_CHAN6_HI],
-
-	    packet->bytemap[STATE_BUTTON_STATES]);
-
-
+	    packet->bytemap[STATE_BUTTON_STATES] & 0xf);
 }
