@@ -1,11 +1,8 @@
 PROG=	eegreader
 
 SRCS=	eegreader.c
-NOMAN=
+OBJS=	$(SRCS:.c=.o)
 BINDIR=		/usr/local/bin
-
-LDADD+=
-DPADD+=
 
 CFLAGS+=	-fstack-protector-all
 CFLAGS+=	-Wall -Wstrict-prototypes -Wmissing-prototypes
@@ -15,4 +12,11 @@ CFLAGS+=	-Wsign-compare
 CFLAGS+=	-Werror-implicit-function-declaration
 CFLAGS+=	-Werror # during development phase (breaks some archs)
 
-.include <bsd.prog.mk>
+@: $(OBJS)
+	$(CC) $(CFLAGS) -o $(PROG) $(OBJS)
+
+clean:
+	rm -f $(PROG) $(OBJS)
+
+install: $(PROG)
+	install -m 111 $(PROG) $(BINDIR)

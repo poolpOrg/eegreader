@@ -28,27 +28,33 @@
 
 #include "eegreader.h"
 
-static void	usage(void);
-static void	line_set(int);
-static void	parser_init(struct parser *);
-static int	parser_process_byte(struct parser *, uint8_t);
-static void	packet_display(struct packet *);
-	
+static void usage(void);
+static void line_set(int);
+static void parser_init(struct parser *);
+static int parser_process_byte(struct parser *, uint8_t);
+static void packet_display(struct packet *);
+static void packet_display_json(struct packet *);
+
 extern char *__progname;
 
-int
-main(int argc, char *argv[])
+int main(int argc, char *argv[])
 {
 	int i;
 	int ch;
 	int fd;
 	int nbytes;
-	unsigned char buf[sizeof (struct packet)];
+	int json = 0;
+	unsigned char buf[sizeof(struct packet)];
 	const char *line = "/dev/cuaU0";
 	struct parser ctx;
-	
-	while ((ch = getopt(argc, argv, "l:")) != -1) {
-		switch (ch) {
+
+	while ((ch = getopt(argc, argv, "jl:")) != -1)
+	{
+		switch (ch)
+		{
+		case 'j':
+			json = 1;
+			break;
 		case 'l':
 			line = optarg;
 			break;
@@ -59,24 +65,30 @@ main(int argc, char *argv[])
 
 	fd = open(line, O_RDONLY | O_NONBLOCK);
 	if (fd < 0)
-		err(1, NULL);
+		err(1, "%s", line);
 
 	line_set(fd);
 
 	parser_init(&ctx);
-	for (;;) {
+	for (;;)
+	{
 		nbytes = read(fd, buf, sizeof buf);
-		if (nbytes < 0) {
+		if (nbytes < 0)
+		{
 			if (errno != EINTR || errno != EAGAIN)
 				continue;
 			err(1, NULL);
 		}
 
 		for (i = 0; i < nbytes; ++i)
-			if (parser_process_byte(&ctx, buf[i]))
-				packet_display(&ctx.packet);
+			if (parser_process_byte(&ctx, buf[i])) {
+				if (json)
+					packet_display_json(&ctx.packet);
+				else
+					packet_display(&ctx.packet);
+			}
 	}
-	
+
 	close(fd);
 
 	return (0);
@@ -85,15 +97,15 @@ main(int argc, char *argv[])
 static void
 usage(void)
 {
-	fprintf(stderr, "usage: %s -l /dev/cuaUx\n", __progname);
+	fprintf(stderr, "usage: %s -l /dev/cuaUx [-s]\n", __progname);
 	exit(1);
 }
 
 static void
 line_set(int fd)
 {
-	struct termios	lio;
-	struct termios	tio;
+	struct termios lio;
+	struct termios tio;
 
 	if (ioctl(fd, TIOCEXCL) != 0)
 		err(1, NULL);
@@ -103,7 +115,7 @@ line_set(int fd)
 	memcpy(&tio, &lio, sizeof tio);
 	tio.c_lflag &= ~ICANON;
 	tio.c_cflag &= ~CSIZE;
-	tio.c_cflag |= CREAD|CS8|CLOCAL;
+	tio.c_cflag |= CREAD | CS8 | CLOCAL;
 	tio.c_cc[VMIN] = 1;
 	tio.c_cc[VTIME] = 0;
 	cfsetspeed(&tio, 57600);
@@ -121,15 +133,18 @@ parser_init(struct parser *ctx)
 static int
 parser_process_byte(struct parser *ctx, uint8_t byte)
 {
-	if (ctx->state == STATE_SYNC_1) {
+	if (ctx->state == STATE_SYNC_1)
+	{
 		if (byte != 0xa5)
 			goto resync;
 	}
-	else if (ctx->state == STATE_SYNC_2) {
+	else if (ctx->state == STATE_SYNC_2)
+	{
 		if (byte != 0x5a)
 			goto resync;
 	}
-	else if (ctx->state == STATE_VERSION) {
+	else if (ctx->state == STATE_VERSION)
+	{
 		if (byte != 0x02)
 			goto resync;
 	}
@@ -152,16 +167,37 @@ resync:
 static void
 packet_display(struct packet *packet)
 {
-	printf("%02x|%d|%d|%d|%d|%d|%d|%d|%d\n",
-	    packet->bytemap[STATE_FRAME],
-	    packet->bytemap[STATE_VERSION],
+	printf("%d|%d|%d|%d|%d|%d|%d|%d|%d\n",
+		   packet->bytemap[STATE_VERSION],
+		   packet->bytemap[STATE_FRAME],
+		   packet->bytemap[STATE_CHAN1_LO] << 8 | packet->bytemap[STATE_CHAN1_HI],
+		   packet->bytemap[STATE_CHAN2_LO] << 8 | packet->bytemap[STATE_CHAN2_HI],
+		   packet->bytemap[STATE_CHAN3_LO] << 8 | packet->bytemap[STATE_CHAN3_HI],
+		   packet->bytemap[STATE_CHAN4_LO] << 8 | packet->bytemap[STATE_CHAN4_HI],
+		   packet->bytemap[STATE_CHAN5_LO] << 8 | packet->bytemap[STATE_CHAN5_HI],
+		   packet->bytemap[STATE_CHAN6_LO] << 8 | packet->bytemap[STATE_CHAN6_HI],
+		   packet->bytemap[STATE_BUTTON_STATES] & 0xf);
+}
 
-		packet->bytemap[STATE_CHAN1_LO] << 8 | packet->bytemap[STATE_CHAN1_HI],
-		packet->bytemap[STATE_CHAN2_LO] << 8 | packet->bytemap[STATE_CHAN2_HI],
-		packet->bytemap[STATE_CHAN3_LO] << 8 | packet->bytemap[STATE_CHAN3_HI],
-		packet->bytemap[STATE_CHAN4_LO] << 8 | packet->bytemap[STATE_CHAN4_HI],
-		packet->bytemap[STATE_CHAN5_LO] << 8 | packet->bytemap[STATE_CHAN5_HI],
-		packet->bytemap[STATE_CHAN6_LO] << 8 | packet->bytemap[STATE_CHAN6_HI],
-
-	    packet->bytemap[STATE_BUTTON_STATES] & 0xf);
+static void
+packet_display_json(struct packet *packet)
+{
+	printf("{\"version\":%d,"
+			"\"frame\":%d,"
+			"\"channel_1\":%d,"
+			"\"channel_2\":%d,"
+			"\"channel_3\":%d,"
+			"\"channel_4\":%d,"
+			"\"channel_5\":%d,"
+			"\"channel_6\":%d,"
+			"\"button_states\":%d}\n",
+		   packet->bytemap[STATE_VERSION],
+		   packet->bytemap[STATE_FRAME],
+		   packet->bytemap[STATE_CHAN1_LO] << 8 | packet->bytemap[STATE_CHAN1_HI],
+		   packet->bytemap[STATE_CHAN2_LO] << 8 | packet->bytemap[STATE_CHAN2_HI],
+		   packet->bytemap[STATE_CHAN3_LO] << 8 | packet->bytemap[STATE_CHAN3_HI],
+		   packet->bytemap[STATE_CHAN4_LO] << 8 | packet->bytemap[STATE_CHAN4_HI],
+		   packet->bytemap[STATE_CHAN5_LO] << 8 | packet->bytemap[STATE_CHAN5_HI],
+		   packet->bytemap[STATE_CHAN6_LO] << 8 | packet->bytemap[STATE_CHAN6_HI],
+		   packet->bytemap[STATE_BUTTON_STATES] & 0xf);
 }
