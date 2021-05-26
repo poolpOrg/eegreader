@@ -48,7 +48,8 @@ enum {
 };
 
 struct parser {
-	uint8_t		state;
+	uint8_t			state;
+	struct timeval	tv;
 
 	struct packet {
 		uint8_t		bytemap[STATE_MAX];

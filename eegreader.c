@@ -15,6 +15,7 @@
  */
 
 #include <sys/types.h>
+#include <sys/time.h>
 #include <sys/ioctl.h>
 
 #include <err.h>
@@ -32,8 +33,8 @@ static void usage(void);
 static void line_set(int);
 static void parser_init(struct parser *);
 static int parser_process_byte(struct parser *, uint8_t);
-static void packet_display(struct packet *);
-static void packet_display_json(struct packet *);
+static void packet_display(struct timeval *, struct packet *);
+static void packet_display_json(struct timeval *, struct packet *);
 
 extern char *__progname;
 
@@ -83,9 +84,9 @@ int main(int argc, char *argv[])
 		for (i = 0; i < nbytes; ++i)
 			if (parser_process_byte(&ctx, buf[i])) {
 				if (json)
-					packet_display_json(&ctx.packet);
+					packet_display_json(&ctx.tv, &ctx.packet);
 				else
-					packet_display(&ctx.packet);
+					packet_display(&ctx.tv, &ctx.packet);
 			}
 	}
 
@@ -137,6 +138,7 @@ parser_process_byte(struct parser *ctx, uint8_t byte)
 	{
 		if (byte != 0xa5)
 			goto resync;
+		(void)gettimeofday(&ctx->tv, NULL);
 	}
 	else if (ctx->state == STATE_SYNC_2)
 	{
@@ -165,39 +167,42 @@ resync:
 }
 
 static void
-packet_display(struct packet *packet)
+packet_display(struct timeval *tv, struct packet *packet)
 {
-	printf("%d|%d|%d|%d|%d|%d|%d|%d|%d\n",
-		   packet->bytemap[STATE_VERSION],
-		   packet->bytemap[STATE_FRAME],
-		   packet->bytemap[STATE_CHAN1_LO] << 8 | packet->bytemap[STATE_CHAN1_HI],
-		   packet->bytemap[STATE_CHAN2_LO] << 8 | packet->bytemap[STATE_CHAN2_HI],
-		   packet->bytemap[STATE_CHAN3_LO] << 8 | packet->bytemap[STATE_CHAN3_HI],
-		   packet->bytemap[STATE_CHAN4_LO] << 8 | packet->bytemap[STATE_CHAN4_HI],
-		   packet->bytemap[STATE_CHAN5_LO] << 8 | packet->bytemap[STATE_CHAN5_HI],
-		   packet->bytemap[STATE_CHAN6_LO] << 8 | packet->bytemap[STATE_CHAN6_HI],
-		   packet->bytemap[STATE_BUTTON_STATES] & 0xf);
+	printf("%ld|%d|%d|%d|%d|%d|%d|%d|%d|%d\n",
+		tv->tv_sec * 1000000 + tv->tv_usec,
+		packet->bytemap[STATE_VERSION],
+		packet->bytemap[STATE_FRAME],
+		packet->bytemap[STATE_CHAN1_LO] << 8 | packet->bytemap[STATE_CHAN1_HI],
+		packet->bytemap[STATE_CHAN2_LO] << 8 | packet->bytemap[STATE_CHAN2_HI],
+		packet->bytemap[STATE_CHAN3_LO] << 8 | packet->bytemap[STATE_CHAN3_HI],
+		packet->bytemap[STATE_CHAN4_LO] << 8 | packet->bytemap[STATE_CHAN4_HI],
+		packet->bytemap[STATE_CHAN5_LO] << 8 | packet->bytemap[STATE_CHAN5_HI],
+		packet->bytemap[STATE_CHAN6_LO] << 8 | packet->bytemap[STATE_CHAN6_HI],
+		packet->bytemap[STATE_BUTTON_STATES] & 0xf);
 }
 
 static void
-packet_display_json(struct packet *packet)
+packet_display_json(struct timeval *tv, struct packet *packet)
 {
-	printf("{\"version\":%d,"
-			"\"frame\":%d,"
-			"\"channel_1\":%d,"
-			"\"channel_2\":%d,"
-			"\"channel_3\":%d,"
-			"\"channel_4\":%d,"
-			"\"channel_5\":%d,"
-			"\"channel_6\":%d,"
-			"\"button_states\":%d}\n",
-		   packet->bytemap[STATE_VERSION],
-		   packet->bytemap[STATE_FRAME],
-		   packet->bytemap[STATE_CHAN1_LO] << 8 | packet->bytemap[STATE_CHAN1_HI],
-		   packet->bytemap[STATE_CHAN2_LO] << 8 | packet->bytemap[STATE_CHAN2_HI],
-		   packet->bytemap[STATE_CHAN3_LO] << 8 | packet->bytemap[STATE_CHAN3_HI],
-		   packet->bytemap[STATE_CHAN4_LO] << 8 | packet->bytemap[STATE_CHAN4_HI],
-		   packet->bytemap[STATE_CHAN5_LO] << 8 | packet->bytemap[STATE_CHAN5_HI],
-		   packet->bytemap[STATE_CHAN6_LO] << 8 | packet->bytemap[STATE_CHAN6_HI],
-		   packet->bytemap[STATE_BUTTON_STATES] & 0xf);
+	printf("{\"timestamp:\": %ld,"
+		"\"version\":%d,"
+		"\"frame\":%d,"
+		"\"channel_1\":%d,"
+		"\"channel_2\":%d,"
+		"\"channel_3\":%d,"
+		"\"channel_4\":%d,"
+		"\"channel_5\":%d,"
+		"\"channel_6\":%d,"
+		"\"button_states\":%d}\n",
+		tv->tv_sec * 1000000 + tv->tv_usec,
+		packet->bytemap[STATE_VERSION],
+		packet->bytemap[STATE_FRAME],
+		packet->bytemap[STATE_CHAN1_LO] << 8 | packet->bytemap[STATE_CHAN1_HI],
+		packet->bytemap[STATE_CHAN2_LO] << 8 | packet->bytemap[STATE_CHAN2_HI],
+		packet->bytemap[STATE_CHAN3_LO] << 8 | packet->bytemap[STATE_CHAN3_HI],
+		packet->bytemap[STATE_CHAN4_LO] << 8 | packet->bytemap[STATE_CHAN4_HI],
+		packet->bytemap[STATE_CHAN5_LO] << 8 | packet->bytemap[STATE_CHAN5_HI],
+		packet->bytemap[STATE_CHAN6_LO] << 8 | packet->bytemap[STATE_CHAN6_HI],
+		packet->bytemap[STATE_BUTTON_STATES] & 0xf);
 }

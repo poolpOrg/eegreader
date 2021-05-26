@@ -13,13 +13,14 @@ been tested on Linux and OSX succesfully.
 
 the output will consists of | separated fields like:
 
-    2|10|519|510|505|500|493|487|7
-    2|11|519|510|506|501|495|489|7
-    2|12|519|511|506|501|495|489|7
-    2|13|519|511|505|499|493|487|7
+    1622034547374070|2|10|519|510|505|500|493|487|7
+    1622034547374071|2|11|519|510|506|501|495|489|7
+    1622034547387645|2|12|519|511|506|501|495|489|7
+    1622034547387646|2|13|519|511|505|499|493|487|7
 
 where the fields are as follow:
 
+    timestamp (microseconds)
     version
     frame
     channel 1
@@ -35,7 +36,7 @@ Each channel value is a 10-bit integer.
 Alternatively, the `-j` option allows a json-formatted output:
 
     $ doas eegreader -l /dev/cuaUO -j
-    {"version":2,"frame":214,"channel_1":334,"channel_2":511,"channel_3":504,"channel_4":498,"channel_5":492,"channel_6":485,"button_states":7}
-    {"version":2,"frame":215,"channel_1":388,"channel_2":511,"channel_3":503,"channel_4":496,"channel_5":489,"channel_6":482,"button_states":15}
-    {"version":2,"frame":216,"channel_1":373,"channel_2":511,"channel_3":505,"channel_4":498,"channel_5":491,"channel_6":484,"button_states":15}
-    {"version":2,"frame":217,"channel_1":391,"channel_2":511,"channel_3":506,"channel_4":501,"channel_5":495,"channel_6":489,"button_states":15}
+    {"timestamp:": 1622034547374070,"version":2,"frame":24,"channel_1":369,"channel_2":511,"channel_3":504,"channel_4":497,"channel_5":490,"channel_6":483,"button_states":7}
+    {"timestamp:": 1622034547374071,"version":2,"frame":25,"channel_1":373,"channel_2":511,"channel_3":505,"channel_4":499,"channel_5":492,"channel_6":486,"button_states":7}
+    {"timestamp:": 1622034547387645,"version":2,"frame":26,"channel_1":405,"channel_2":511,"channel_3":506,"channel_4":501,"channel_5":495,"channel_6":489,"button_states":7}
+    {"timestamp:": 1622034547387646,"version":2,"frame":27,"channel_1":417,"channel_2":511,"channel_3":505,"channel_4":499,"channel_5":493,"channel_6":487,"button_states":15}
